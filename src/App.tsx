@@ -1,41 +1,23 @@
 import React, { useState } from 'react';
-import { Plus, Search, Building2, Wallet, Wrench, MessageSquare } from 'lucide-react';
+import { Plus, Search, Building2, Wallet, Wrench, MessageSquare, BarChart3 } from 'lucide-react';
 import { PropertyList } from './components/PropertyList';
 import { FinancialDashboard } from './components/FinancialDashboard';
 import { MaintenanceDashboard } from './components/MaintenanceDashboard';
 import { CommunicationDashboard } from './components/CommunicationDashboard';
+import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
+import { AddPropertyModal } from './components/AddPropertyModal';
+import { useProperties } from './hooks/useSupabase';
 import type { Property } from './types/property';
 
-const mockProperties: Property[] = [
-  {
-    id: '1',
-    name: 'Sunset Apartments',
-    address: '123 Main St, City, State',
-    size: 5000,
-    units: 10,
-    amenities: ['pool', 'gym', 'parking'],
-    photos: ['https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80'],
-    createdAt: new Date(),
-  },
-  {
-    id: '2',
-    name: 'Ocean View Complex',
-    address: '456 Beach Rd, Coastal City, State',
-    size: 8000,
-    units: 15,
-    amenities: ['beach access', 'parking', 'security'],
-    photos: ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80'],
-    createdAt: new Date(),
-  },
-];
-
-type ActiveTab = 'properties' | 'finances' | 'maintenance' | 'communication';
+type ActiveTab = 'properties' | 'finances' | 'maintenance' | 'communication' | 'analytics';
 
 function App() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<ActiveTab>('communication');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('properties');
+  const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
+  const { properties, loading, error } = useProperties();
   
-  const filteredProperties = mockProperties.filter(property =>
+  const filteredProperties = properties.filter(property =>
     property.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     property.address.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -54,6 +36,8 @@ function App() {
         return <Wrench className="w-4 h-4" />;
       case 'communication':
         return <MessageSquare className="w-4 h-4" />;
+      case 'analytics':
+        return <BarChart3 className="w-4 h-4" />;
     }
   };
 
@@ -67,6 +51,8 @@ function App() {
         return 'New Request';
       case 'communication':
         return 'New Message';
+      case 'analytics':
+        return 'Generate Report';
     }
   };
 
@@ -77,7 +63,7 @@ function App() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Property Manager</h1>
             <div className="mt-4 flex space-x-4">
-              {(['properties', 'finances', 'maintenance', 'communication'] as const).map((tab) => (
+              {(['properties', 'finances', 'maintenance', 'communication', 'analytics'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -93,7 +79,10 @@ function App() {
               ))}
             </div>
           </div>
-          <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-colors duration-200">
+          <button
+            onClick={() => activeTab === 'properties' && setIsAddPropertyModalOpen(true)}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-colors duration-200"
+          >
             <Plus className="w-5 h-5" />
             <span>{getAddButtonText(activeTab)}</span>
           </button>
@@ -113,16 +102,37 @@ function App() {
                 />
               </div>
             </div>
-            <PropertyList
-              properties={filteredProperties}
-              onPropertyClick={handlePropertyClick}
-            />
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-gray-500">Loading properties...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <p className="text-red-500">{error}</p>
+              </div>
+            ) : (
+              <PropertyList
+                properties={filteredProperties}
+                onPropertyClick={handlePropertyClick}
+              />
+            )}
           </>
         )}
 
         {activeTab === 'finances' && <FinancialDashboard />}
         {activeTab === 'maintenance' && <MaintenanceDashboard />}
         {activeTab === 'communication' && <CommunicationDashboard />}
+        {activeTab === 'analytics' && <AnalyticsDashboard />}
+
+        <AddPropertyModal
+          isOpen={isAddPropertyModalOpen}
+          onClose={() => setIsAddPropertyModalOpen(false)}
+          onPropertyAdded={() => {
+            // Refresh properties list
+            window.location.reload();
+          }}
+        />
       </div>
     </div>
   );
