@@ -6,16 +6,22 @@ import { MaintenanceDashboard } from './components/MaintenanceDashboard';
 import { CommunicationDashboard } from './components/CommunicationDashboard';
 import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
 import { AddPropertyModal } from './components/AddPropertyModal';
+import { LoginForm } from './components/auth/LoginForm';
+import { RegisterForm } from './components/auth/RegisterForm';
+import { AuthProvider } from './components/auth/AuthProvider';
+import { useAuth } from './lib/auth';
 import { useProperties } from './hooks/useSupabase';
 import type { Property } from './types/property';
 
 type ActiveTab = 'properties' | 'finances' | 'maintenance' | 'communication' | 'analytics';
+type AuthView = 'login' | 'register';
 
-function App() {
+function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<ActiveTab>('properties');
   const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
   const { properties, loading, error } = useProperties();
+  const { role } = useAuth();
   
   const filteredProperties = properties.filter(property =>
     property.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -79,13 +85,15 @@ function App() {
               ))}
             </div>
           </div>
-          <button
-            onClick={() => activeTab === 'properties' && setIsAddPropertyModalOpen(true)}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-colors duration-200"
-          >
-            <Plus className="w-5 h-5" />
-            <span>{getAddButtonText(activeTab)}</span>
-          </button>
+          {role === 'admin' && (
+            <button
+              onClick={() => activeTab === 'properties' && setIsAddPropertyModalOpen(true)}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-colors duration-200"
+            >
+              <Plus className="w-5 h-5" />
+              <span>{getAddButtonText(activeTab)}</span>
+            </button>
+          )}
         </div>
 
         {activeTab === 'properties' && (
@@ -123,7 +131,7 @@ function App() {
         {activeTab === 'finances' && <FinancialDashboard />}
         {activeTab === 'maintenance' && <MaintenanceDashboard />}
         {activeTab === 'communication' && <CommunicationDashboard />}
-        {activeTab === 'analytics' && <AnalyticsDashboard />}
+        {activeTab === 'analytics' && role === 'admin' && <AnalyticsDashboard />}
 
         <AddPropertyModal
           isOpen={isAddPropertyModalOpen}
@@ -135,6 +143,32 @@ function App() {
         />
       </div>
     </div>
+  );
+}
+
+function AuthScreen() {
+  const [view, setView] = useState<AuthView>('login');
+
+  return view === 'login' ? (
+    <LoginForm
+      onSuccess={() => {}}
+      onRegisterClick={() => setView('register')}
+    />
+  ) : (
+    <RegisterForm
+      onSuccess={() => setView('login')}
+      onLoginClick={() => setView('login')}
+    />
+  );
+}
+
+function App() {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <AuthProvider>
+      {isAuthenticated ? <Dashboard /> : <AuthScreen />}
+    </AuthProvider>
   );
 }
 
